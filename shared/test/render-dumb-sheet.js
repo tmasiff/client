@@ -12,11 +12,8 @@ import '../desktop/renderer/style.css'
 
 const PADDING = 25
 
-function onDisplay (ev, msg) {
-  const map = dumbComponentMap[msg.key]
-  const mockKey = msg.mockKey
-
-  const displayTree = (
+function Mock ({map, mockKey}) {
+  return (
     <MuiThemeProvider muiTheme={materialTheme}>
       <GlobalEscapeHandler>
         <DumbSheetItem
@@ -30,6 +27,23 @@ function onDisplay (ev, msg) {
       </GlobalEscapeHandler>
     </MuiThemeProvider>
   )
+}
+
+function Error ({error}) {
+  return (
+    <p
+      id='rendered'
+      data-error={true}
+      style={{background: 'red', color: 'white', fontWeight: 'bold', padding: 20}}
+    >
+      {JSON.stringify(error)}
+    </p>
+  )
+}
+
+function onDisplay (ev, msg) {
+  const map = dumbComponentMap[msg.key]
+  const mockKey = msg.mockKey
 
   const sendDisplayDone = () => {
     // Unfortunately some resources lazy load after they're rendered.  We need
@@ -37,10 +51,7 @@ function onDisplay (ev, msg) {
     // requestAnimationFrame, etc., simply putting in a time delay worked best.
     setTimeout(() => {
       const renderedEl = document.getElementById('rendered')
-      if (!renderedEl) {
-        ipcRenderer.send('display-error', {...msg})
-        return
-      }
+      const isError = renderedEl.dataset.error == 'true'
       const box = renderedEl.getBoundingClientRect()
       const rect = {
         x: box.left - PADDING,
@@ -55,7 +66,7 @@ function onDisplay (ev, msg) {
 
   const appEl = document.getElementById('root')
   try {
-    ReactDOM.render(displayTree, appEl, () => {
+    ReactDOM.render(<Mock map={map} mockKey={mockKey} />, appEl, () => {
       // Remove pesky blinking cursors
       if (document.activeElement && (document.activeElement.tagName === 'INPUT' ||
           document.activeElement.tagName === 'TEXTAREA')) {
@@ -65,7 +76,7 @@ function onDisplay (ev, msg) {
       sendDisplayDone()
     })
   } catch (err) {
-    ReactDOM.render(<p>{JSON.stringify(err)}</p>, appEl, () => {
+    ReactDOM.render(<Error error={err} />, appEl, () => {
       sendDisplayDone()
     })
   }
