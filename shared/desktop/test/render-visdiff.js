@@ -53,7 +53,7 @@ app.on('ready', () => {
 
   ipcMain.on('display-error', (ev, msg) => {
     count++
-    console.log(`[${count} / ${total}] error ${msg}`)
+    console.log(`[${count} / ${total}] error rendering: ${msg.key} - ${msg.mockKey}`)
     rendering--
     const sender = ev.sender
     renderNext(sender)
