@@ -29,7 +29,7 @@ function Mock ({map, mockKey}) {
   )
 }
 
-function Error ({error}) {
+function ErrorMessage ({error}) {
   return (
     <p
       id='rendered'
@@ -89,7 +89,7 @@ function onDisplay (ev, msg) {
       sendDisplayDone()
     })
   } catch (err) {
-    ReactDOM.render(<Error error={err} />, appEl, () => {
+    ReactDOM.render(<ErrorMessage error={err} />, appEl, () => {
       sendDisplayDone()
     })
   }
