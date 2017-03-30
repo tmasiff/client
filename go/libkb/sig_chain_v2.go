@@ -1,5 +1,9 @@
 package libkb
 
+import (
+	"github.com/keybase/go-codec/codec"
+)
+
 type SigchainTypesV2 int
 
 const (
@@ -26,4 +30,10 @@ type OuterLinkV2 struct {
 	prev     LinkID `codec:"prev"`
 	body     []byte `codec:"body"`
 	linkType int    `codec:"type"`
+}
+
+func (o OuterLinkV2) Encode() ([]byte, error) {
+	var encoded []byte
+	err := codec.NewEncoderBytes(&encoded, codecHandle()).Encode(o)
+	return encoded, err
 }

@@ -500,7 +500,51 @@ func (c ChainLink) getFixedPayload() []byte {
 }
 
 func (c *ChainLink) verifyPayloadV2() error {
+
+	if c.payloadVerified {
+		return nil
+	}
+
+	var err error
+	var version int
+	var seqno int
+	var prevHex string
+
+	c.payloadJSON.AtKey("version").GetIntVoid(&version, &err)
+	c.payloadJSON.AtKey("prev").GetStringVoid(&prevHex, &err)
+	c.payloadJSON.AtKey("seqno").GetIntVoid(&seqno, &err)
+	if err != nil {
+		return err
+	}
+	bodyHash := sha256.Sum256([]byte(c.getFixedPayload()))
+	prev, err := LinkIDFromHex(prevHex)
+	if err != nil {
+		return err
+	}
+
+	link := OuterLinkV2{
+		version: version,
+		seqno:   Seqno(seqno),
+		body:    bodyHash[:],
+		prev:    prev,
+	}
+	payload, err := link.Encode()
+	if err != nil {
+		return err
+	}
+
+	sigid, err := SigAssertPayload(c.unpacked.sig, payload)
+	if err != nil {
+		return err
+	}
+	c.markPayloadVerified(sigid)
 	return nil
+}
+
+func (c *ChainLink) markPayloadVerified(sigid keybase1.SigID) {
+	c.unpacked.sigID = sigid
+	c.payloadVerified = true
+	c.G().LinkCache.Mutate(c.id, func(c *ChainLink) { c.payloadVerified = true })
 }
 
 func (c *ChainLink) verifyPayloadV1() error {
@@ -513,9 +557,7 @@ func (c *ChainLink) verifyPayloadV1() error {
 		return err
 	}
 
-	c.unpacked.sigID = sigid
-	c.payloadVerified = true
-	c.G().LinkCache.Mutate(c.id, func(c *ChainLink) { c.payloadVerified = true })
+	c.markPayloadVerified(sigid)
 	return nil
 }
 
