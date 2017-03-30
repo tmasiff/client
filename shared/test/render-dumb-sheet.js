@@ -43,6 +43,10 @@ function Error ({error}) {
 
 function onDisplay (ev, msg) {
   const appEl = document.getElementById('root')
+  if (!appEl) {
+    throw new Error('Page missing #root container')
+  }
+
   const map = dumbComponentMap[msg.key]
   const mockKey = msg.mockKey
 
