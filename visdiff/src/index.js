@@ -23,6 +23,7 @@ const DIFF_NEW = 'new'
 const DIFF_REMOVED = 'removed'
 const DIFF_CHANGED = 'changed'
 const DIFF_SAME = 'same'
+const DIFF_ERROR = 'error'
 
 const DRY_RUN = !!process.env['VISDIFF_DRY_RUN']
 const WORK_DIR = process.env['VISDIFF_WORK_DIR'] || path.join(os.tmpdir(), 'visdiff')
@@ -120,6 +121,12 @@ function compareScreenshots (commitRange, diffDir, callback) {
 
     const diffPath = `screenshots/${diffDir}/${filename}`
 
+    if (filename.endsWith('-ERROR.png')) {
+      results[diffPath] = DIFF_ERROR
+      compareNext()
+      return
+    }
+
     const oldPath = `screenshots/${commitRange[0]}/${filename}`
     if (!fs.existsSync(oldPath)) {
       results[diffPath] = DIFF_NEW
@@ -151,6 +158,7 @@ function compareScreenshots (commitRange, diffDir, callback) {
 }
 
 function processDiff (diffDir, commitRange, results) {
+  const errorResults = []
   const changedResults = []
   const newResults = []
   const removedResults = []
@@ -169,7 +177,9 @@ function processDiff (diffDir, commitRange, results) {
         }
       }
 
-      if (result === DIFF_CHANGED) {
+      if (result === DIFF_ERROR) {
+        errorResults.push(filenameParts.name)
+      } else if (result === DIFF_CHANGED) {
         changedResults.push(filenameParts.name)
       } else if (result === DIFF_NEW) {
         newResults.push(filenameParts.name)
@@ -181,6 +191,18 @@ function processDiff (diffDir, commitRange, results) {
 
   const commentLines = []
   let imageCount = 0
+
+  errorResults.forEach(name => {
+    const errorURL = `${BUCKET_HTTP}/${diffDir}/${name}.png`
+    const line = ` * :no_entry: <span style="color:red">ERROR</span>: **${name}**`
+    if (imageCount > MAX_INLINE_IMAGES) {
+      commentLines.push(line + ` [(view)](${errorURL})`)
+    } else {
+      commentLines.push(line + '  ')
+      commentLines.push(`   ![${name} rendered](${errorURL})`)
+      imageCount++
+    }
+  })
 
   newResults.forEach(name => {
     const afterURL = `${BUCKET_HTTP}/${diffDir}/${name}-${commitRange[1]}.png`

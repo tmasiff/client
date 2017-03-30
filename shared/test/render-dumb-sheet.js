@@ -60,7 +60,7 @@ function onDisplay (ev, msg) {
         height: Math.floor(box.height + 2 * PADDING),
       }
 
-      ipcRenderer.send('display-done', {rect, ...msg})
+      ipcRenderer.send('display-done', {rect, isError, ...msg})
     }, 1000)
   }
 
