@@ -51,13 +51,17 @@ function onDisplay (ev, msg) {
     // to give the renderer time to load.  After trying process.nextTick,
     // requestAnimationFrame, etc., simply putting in a time delay worked best.
     setTimeout(() => {
-      const renderedEl = document.getElementById('rendered')
+      let renderedEl = document.getElementById('rendered')
+      let isError
       if (!renderedEl) {
         renderedEl = document.createElement('div')
         renderedEl.textContent = 'Error: rendered content missing from page'
         appEl.appendChild(renderedEl)
+        isError = true
+      } else {
+        isError = renderedEl.dataset.error == 'true'
       }
-      const isError = renderedEl.dataset.error == 'true'
+
       const box = renderedEl.getBoundingClientRect()
       const rect = {
         x: box.left - PADDING,
