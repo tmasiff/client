@@ -42,6 +42,7 @@ function Error ({error}) {
 }
 
 function onDisplay (ev, msg) {
+  const appEl = document.getElementById('root')
   const map = dumbComponentMap[msg.key]
   const mockKey = msg.mockKey
 
@@ -51,6 +52,11 @@ function onDisplay (ev, msg) {
     // requestAnimationFrame, etc., simply putting in a time delay worked best.
     setTimeout(() => {
       const renderedEl = document.getElementById('rendered')
+      if (!renderedEl) {
+        renderedEl = document.createElement('div')
+        renderedEl.textContent = 'Error: rendered content missing from page'
+        appEl.appendChild(renderedEl)
+      }
       const isError = renderedEl.dataset.error == 'true'
       const box = renderedEl.getBoundingClientRect()
       const rect = {
@@ -64,7 +70,6 @@ function onDisplay (ev, msg) {
     }, 1000)
   }
 
-  const appEl = document.getElementById('root')
   try {
     ReactDOM.render(<Mock map={map} mockKey={mockKey} />, appEl, () => {
       // Remove pesky blinking cursors
