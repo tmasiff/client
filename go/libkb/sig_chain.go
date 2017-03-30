@@ -133,6 +133,8 @@ func (sc *SigChain) LoadFromServer(ctx context.Context, t *MerkleTriple, selfUID
 	low := sc.GetLastLoadedSeqno()
 	sc.loadedFromLinkOne = (low == Seqno(0) || low == Seqno(-1))
 
+	isSelf := selfUID.Equal(sc.uid)
+
 	sc.G().Log.CDebugf(ctx, "+ Load SigChain from server (uid=%s, low=%d)", sc.uid, low)
 	defer func() { sc.G().Log.CDebugf(ctx, "- Loaded SigChain -> %s", ErrToOk(err)) }()
 
@@ -140,8 +142,10 @@ func (sc *SigChain) LoadFromServer(ctx context.Context, t *MerkleTriple, selfUID
 		Endpoint:    "sig/get",
 		NeedSession: false,
 		Args: HTTPArgs{
-			"uid": UIDArg(sc.uid),
-			"low": I{int(low)},
+			"uid":           UIDArg(sc.uid),
+			"low":           I{int(low)},
+			"v2_compressed": B{true},   // TODO: Change the server to honor this flag
+			"self":          B{isSelf}, // TODO: Change the server to honor this flag
 		},
 		NetContext: ctx,
 	})
@@ -162,15 +166,19 @@ func (sc *SigChain) LoadFromServer(ctx context.Context, t *MerkleTriple, selfUID
 
 	var links []*ChainLink
 	var tail *ChainLink
+	sc.G().Log.Debug("Got back lim=%d", lim)
 
 	for i := 0; i < lim; i++ {
+		sc.G().Log.Debug("A iterating through links @ %d", i)
 		var link *ChainLink
 		if link, err = ImportLinkFromServer(sc.G(), sc, v.AtIndex(i), selfUID); err != nil {
 			return
 		}
+		sc.G().Log.Debug("B iterating through links @ %d", i)
 		if link.GetSeqno() <= low {
 			continue
 		}
+		sc.G().Log.Debug("C iterating through links @ %d", i)
 		if selfUID.Equal(link.GetUID()) {
 			sc.G().Log.CDebugf(ctx, "| Setting isOwnNewLinkFromServer=true for seqno %d", link.GetSeqno())
 			link.isOwnNewLinkFromServer = true

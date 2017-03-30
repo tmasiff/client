@@ -499,7 +499,11 @@ func (c ChainLink) getFixedPayload() []byte {
 	return []byte(ret)
 }
 
-func (c *ChainLink) VerifyPayload() error {
+func (c *ChainLink) verifyPayloadV2() error {
+	return nil
+}
+
+func (c *ChainLink) verifyPayloadV1() error {
 	if c.payloadVerified {
 		return nil
 	}
@@ -516,9 +520,11 @@ func (c *ChainLink) VerifyPayload() error {
 }
 
 func (c *ChainLink) GetSeqno() Seqno {
+	c.G().Log.Debug("calling GetSeqno")
 	if c.unpacked != nil {
 		return c.unpacked.seqno
 	}
+	c.G().Log.Debug("returning -1 since not unpacked")
 	return Seqno(-1)
 }
 
@@ -580,6 +586,7 @@ func ImportLinkFromServer(g *GlobalContext, parent *SigChain, jw *jsonw.Wrapper,
 	if err = ret.Unpack(false, selfUID); err != nil {
 		ret = nil
 	}
+	g.Log.Debug("After unpack: %+v", ret.unpacked)
 	return
 }
 
@@ -622,6 +629,24 @@ func (c *ChainLink) VerifyLink() error {
 		return err
 	}
 	return nil
+}
+
+func (c *ChainLink) VerifyPayload() error {
+	v, err := c.packed.AtKey("version").GetInt()
+	if err != nil {
+		c.G().Log.Warning("sig_version wasn't specified with signature; assuming v1: %s", err)
+		v = 1
+		err = nil
+	}
+
+	switch v {
+	case 1:
+		return c.verifyPayloadV1()
+	case 2:
+		return c.verifyPayloadV2()
+	default:
+		return ChainLinkError{msg: fmt.Sprintf("unexpected signature version: %d", v)}
+	}
 }
 
 func (c *ChainLink) checkServerSignatureMetadata(ckf ComputedKeyFamily) error {
