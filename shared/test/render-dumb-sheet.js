@@ -63,7 +63,7 @@ function onDisplay (ev, msg) {
         appEl.appendChild(renderedEl)
         isError = true
       } else {
-        isError = renderedEl.dataset.error == 'true'
+        isError = renderedEl.dataset.error === 'true'
       }
 
       const box = renderedEl.getBoundingClientRect()
