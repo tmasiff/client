@@ -99,6 +99,7 @@ type ChainLinkUnpacked struct {
 	username       string
 	typ            string
 	proofText      string
+	sigVersion     int
 }
 
 // A template for some of the reasons in badChainLinks below.
@@ -395,6 +396,7 @@ func (c *ChainLink) Unpack(trusted bool, selfUID keybase1.UID) (err error) {
 	c.packed.AtKey("sig").GetStringVoid(&tmp.sig, &err)
 	tmp.sigID, err = GetSigID(c.packed.AtKey("sig_id"), true)
 	c.packed.AtKey("payload_json").GetStringVoid(&tmp.payloadJSONStr, &err)
+	c.packed.AtKey("sig_version").GetIntVoid(&tmp.sigVersion, &err)
 
 	if err != nil {
 		return err
@@ -521,12 +523,17 @@ func (c *ChainLink) verifyPayloadV2() error {
 	if err != nil {
 		return err
 	}
+	linkType, err := c.GetSigchainV2Type()
+	if err != nil {
+		return err
+	}
 
 	link := OuterLinkV2{
-		version: version,
-		seqno:   Seqno(seqno),
-		body:    bodyHash[:],
-		prev:    prev,
+		version:  version,
+		seqno:    Seqno(seqno),
+		body:     bodyHash[:],
+		prev:     prev,
+		linkType: linkType,
 	}
 	payload, err := link.Encode()
 	if err != nil {
@@ -673,14 +680,20 @@ func (c *ChainLink) VerifyLink() error {
 	return nil
 }
 
-func (c *ChainLink) VerifyPayload() error {
-	v, err := c.packed.AtKey("version").GetInt()
-	if err != nil {
-		c.G().Log.Warning("sig_version wasn't specified with signature; assuming v1: %s", err)
-		v = 1
-		err = nil
-	}
+func (c *ChainLink) HasRevocations() bool {
+	return len(c.GetRevocations())+len(c.GetRevokeKids()) > 0
+}
 
+func (c *ChainLink) GetSigchainV2Type() (SigchainV2Type, error) {
+	t, err := c.payloadJSON.AtKey("body.type").GetString()
+	if err != nil {
+		return SigchainV2TypeNone, err
+	}
+	return SigchainV2TypeFromV1TypeAndRevocations(t, c.HasRevocations())
+}
+
+func (c *ChainLink) VerifyPayload() error {
+	v := c.unpacked.sigVersion
 	switch v {
 	case 1:
 		return c.verifyPayloadV1()
